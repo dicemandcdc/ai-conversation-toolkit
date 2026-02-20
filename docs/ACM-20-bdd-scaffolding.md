@@ -413,6 +413,48 @@ After pushing, confirm the following appear in the ACM-20 ticket:
 
 ---
 
+## Post-Merge: Upstream Tracking Setup
+
+After merging `feature/ACM-20-bdd-scaffolding` into `main`, you may encounter:
+
+```
+fatal: The current branch main has no upstream branch.
+To push the current branch and set the remote as upstream, use
+
+    git push --set-upstream origin main
+```
+
+### What is Upstream Tracking?
+
+Upstream tracking means your local branch knows which remote branch it should push to and pull from. It's like setting a "default destination" for `git push` and `git pull`.
+
+Without it:
+- `git push` fails with "no upstream branch"
+- `git pull` won't know where to get updates from
+
+With it:
+- `git push` → pushes to `origin/main` automatically
+- `git pull` → pulls from `origin/main` automatically
+
+### Why Set It?
+
+You set it because:
+1. You just created `main` locally and pushed it to GitHub for the first time
+2. GitHub didn't know where to send your commits
+3. Setting upstream tracking tells GitHub: "This is the default remote branch for my local `main`"
+
+### How to Set It
+
+```bash
+git push --set-upstream origin main
+```
+
+After this, `git push` and `git pull` work without flags.
+
+> **Note:** This is a one-time setup. Once done, you can use `git push` and `git pull` normally.
+
+---
+
 ## Related
 - Jira: ACM-20
 - Parent story: ACM-4 Export Brave Leo Conversations to JSON
