@@ -1,33 +1,40 @@
--- postgresql_schema.sql
--- Version 1.0 – Initial schema for Brave Leo export
--- This DDL creates the tables that store exported conversations.
--- It aligns with schema/brave_leo_export_schema.json (Draft‑07).
+-- ============================================================
+-- AI Conversation Management Toolkit — PostgreSQL DDL
+-- ACM-27 | Assignee: Flora Cruz
+-- NOTE: session_id, thread_id, metadata, message_metadata,
+--       and message_order are intentionally included now to
+--       support future conversation reconstruction (ACM-24)
+--       and avoid costly schema migrations later.
+-- ============================================================
 
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- Table that stores each exported conversation as a JSONB document.
-CREATE TABLE conversations (
-    id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    platform         VARCHAR(50) NOT NULL,                     -- e.g., 'Brave Leo'
-    exported_at      TIMESTAMPTZ NOT NULL,                     -- ISO‑8601 timestamp
-    source           VARCHAR(50) NOT NULL,                     -- redundant with platform, kept for legacy queries
-    message_count    INTEGER NOT NULL CHECK (message_count >= 0),
-    messages         JSONB NOT NULL,                           -- array of message objects
-    metadata         JSONB,                                     -- optional extra data
-    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+-- TABLE: conversations
+-- Stores one record per exported Brave Leo conversation file.
+CREATE TABLE IF NOT EXISTS conversations (
+    id             SERIAL          PRIMARY KEY,
+    source         VARCHAR(50)     NOT NULL,           -- e.g. "Brave Leo"
+    exported_at    TIMESTAMPTZ     NOT NULL,           -- from JSON exported_at
+    message_count  INTEGER,                            -- from JSON message_count
+    created_at     TIMESTAMPTZ     DEFAULT NOW(),
+    session_id     UUID,                               -- ACM-24: multi-session reconstruction
+    thread_id      VARCHAR(100),                       -- ACM-24: thread continuity
+    metadata       JSONB                               -- flexible; no migration needed for new fields
 );
 
--- Index to speed up look‑ups by export time and platform
-CREATE INDEX idx_conversations_exported_at ON conversations (exported_at DESC);
-CREATE INDEX idx_conversations_platform   ON conversations (platform);
+-- TABLE: messages
+-- Stores individual messages linked to a conversation.
+CREATE TABLE IF NOT EXISTS messages (
+    id                  SERIAL      PRIMARY KEY,
+    conversation_id     INTEGER     NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    role                VARCHAR(20) NOT NULL,          -- "user" or "leo"
+    message_order       INTEGER     NOT NULL,          -- preserves exact conversation sequence (ACM-24)
+    text                TEXT        NOT NULL,          -- message content
+    created_at          TIMESTAMPTZ DEFAULT NOW(),
+    token_count         INTEGER,                       -- future FinOps AI cost tracking
+    message_metadata    JSONB                          -- flexible; no migration needed for new fields
+);
 
--- Optional: a view that expands the JSON messages into a relational form
-CREATE VIEW conversation_messages AS
-SELECT
-    c.id                               AS conversation_id,
-    (msg->>'role')::TEXT               AS role,
-    (msg->>'id')::INTEGER              AS message_id,
-    (msg->>'text')::TEXT               AS text,
-    jsonb_array_elements(c.messages)   AS msg
-FROM conversations c;
+-- INDEXES
+CREATE INDEX IF NOT EXISTS idx_conversations_source      ON conversations(source);
+CREATE INDEX IF NOT EXISTS idx_conversations_exported_at ON conversations(exported_at);
+CREATE INDEX IF NOT EXISTS idx_messages_conversation_id  ON messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_messages_role             ON messages(role);
