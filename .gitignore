@@ -79,3 +79,10 @@ build/
 # ==========================
 *.sql.bak
 pg_dump/
+
+# ==========================
+# Local data & exports
+# ==========================
+memories/
+exports/
+*.save
