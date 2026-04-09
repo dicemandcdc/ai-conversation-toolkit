@@ -11,9 +11,13 @@ import os
 import sys
 import json
 import uuid
+from urllib.parse import quote_plus
+from dotenv import load_dotenv
 from datetime import datetime, timezone
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure, OperationFailure
+
+load_dotenv()
 
 # ── Logging Setup ──────────────────────────────────────────────────────────────
 LOG_DIR = "/var/log/health_checks"
@@ -153,7 +157,7 @@ def write_to_mongodb(memories: list[dict], args):
     db_name  = os.environ.get("MONGO_DB", "ai_conversation_toolkit")
     coll     = os.environ.get("MONGO_COLLECTION", "leo_memories")
 
-    uri = f"mongodb://{user}:{password}@{host}:{port}/{db_name}?authSource={db_name}"
+    uri = f"mongodb://{quote_plus(user)}:{quote_plus(password)}@{host}:{port}/{db_name}?authSource={db_name}"
 
     max_attempts = 3
     for attempt in range(1, max_attempts + 1):
